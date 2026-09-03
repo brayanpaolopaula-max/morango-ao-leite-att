@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morango ao Leite 3D - Ultimate Master Edition</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #050505;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+
+    /* Overlays de Menus e Telas */
+    .screen-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(8, 2, 12, 0.94);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      font-size: 48px;
+      color: #ff0055;
+      text-shadow: 0 0 20px #ff0055, 2px 2px 5px #000;
+      margin-bottom: 25px;
+    }
+
+    .menu-btn {
+      width: 280px;
+      padding: 14px 20px;
+      margin: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(45deg, #ff0055, #ff5500);
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .menu-btn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 0 25px rgba(255, 0, 85, 0.8);
+    }
+
+    .menu-btn.disabled {
+      background: #333;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .menu-btn.selected {
+      border: 3px solid #ffe600;
+      box-shadow: 0 0 20px #ffe600;
+      transform: scale(1.05);
+    }
+
+    /* Tela Especial de Vitória */
+    #victory-screen {
+      background: radial-gradient(circle, #240024 0%, #050008 100%);
+      border: 4px solid #ffe600;
+      box-shadow: inset 0 0 50px #ff0055;
+    }
+
+    .victory-title {
+      font-size: 40px;
+      color: #ffe600;
+      text-shadow: 0 0 20px #ffe600, 0 0 40px #ff0055;
+      animation: pulse 1.8s infinite alternate;
+      margin-bottom: 15px;
+      max-width: 850px;
+      line-height: 1.3;
+      font-weight: 900;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(0.98); opacity: 0.9; }
+      to { transform: scale(1.03); opacity: 1; }
+    }
+
+    /* HUD Interface */
+    #hud {
+      position: absolute;
+      top: 15px; left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .bar-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      font-weight: bold;
+      font-size: 13px;
+      text-shadow: 1px 1px 3px #000;
+    }
+
+    .bar-container {
+      width: 380px;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 12px rgba(0,0,0,0.8);
+    }
+
+    #player-health-bar {
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, #ff3366, #ff6688);
+      transition: width 0.15s ease;
+    }
+
+    #boss-health-bar {
+      width: 100%; height: 100%;
+      background-color: #2ecc71;
+      transition: width 0.15s ease, background-color 0.3s;
+    }
+
+    #special-container {
+      width: 260px; height: 12px;
+    }
+
+    #special-bar {
+      width: 0%; height: 100%;
+      background: linear-gradient(90deg, #00d2ff, #0072ff);
+      transition: width 0.11s linear;
+    }
+
+    #phase-text {
+      color: #ffe600;
+      font-weight: 800;
+      text-shadow: 2px 2px 6px #000;
+      font-size: 15px;
+      letter-spacing: 1px;
+    }
+
+    #boss-banner {
+      position: absolute;
+      top: 35%; left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      color: #ff0055;
+      font-size: 34px; font-weight: 900;
+      text-shadow: 0 0 20px #ff0055, 0 0 5px #000;
+      pointer-events: none;
+      z-index: 20;
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      text-align: center;
+    }
+
+    #damage-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-color: rgba(255, 0, 0, 0);
+      pointer-events: none;
+      z-index: 5;
+      transition: background-color 0.1s ease;
+    }
+
+    #controls-hint {
+      position: absolute;
+      bottom: 15px; left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      background: rgba(0, 0, 0, 0.75);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      border: 1px solid rgba(255,255,255,0.2);
+      pointer-events: none;
+      display: none;
+      text-align: center;
+    }
+
+    .diff-title {
+      font-size: 14px;
+      color: #ffe600;
+      margin-top: -15px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: bold;
+    }
+
+    /* ESTILOS DA LOJA DE ARMAS (UPGRADES) */
+    #shop-menu {
+      display: none;
+      z-index: 60;
+    }
+
+    .shop-container {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      margin: 15px 0;
+      max-width: 1000px;
+      width: 90%;
+    }
+
+    .shop-column {
+      flex: 1;
+      background: rgba(20, 5, 25, 0.85);
+      border: 2px solid #ff0055;
+      border-radius: 15px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 0 15px rgba(255, 0, 85, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .shop-column.locked {
+      opacity: 0.3;
+      filter: grayscale(1);
+      border-color: #555;
+      pointer-events: none;
+    }
+
+    .shop-column.active-choice {
+      border-color: #ffe600;
+      box-shadow: 0 0 25px rgba(255, 230, 0, 0.6);
+      background: rgba(40, 15, 50, 0.9);
+    }
+
+    .shop-column h2 {
+      font-size: 20px;
+      color: #ffe600;
+      margin: 0 0 10px 0;
+      text-shadow: 0 0 8px #ffe600;
+    }
+
+    .shop-column p {
+      font-size: 13px;
+      color: #ddd;
+      margin-bottom: 15px;
+      min-height: 40px;
+    }
+
+    .shop-level-indicator {
+      font-size: 16px;
+      font-weight: bold;
+      color: #00d2ff;
+      margin-bottom: 15px;
+    }
+
+    .shop-buy-btn {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #fff;
+      background: linear-gradient(45deg, #00c853, #b2ff59);
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      color: #000;
+      box-shadow: 0 0 10px rgba(0, 200, 83, 0.5);
+    }
+
+    .shop-buy-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .shop-buy-btn.disabled {
+      background: #444;
+      color: #888;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #currency-display {
+      font-size: 22px;
+      color: #ffea00;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-shadow: 0 0 10px #ffea00;
+    }
+
+    #hud-coins {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      color: #ffe600;
+      font-weight: bold;
+      font-size: 18px;
+      text-shadow: 2px 2px 4px #000;
+      z-index: 10;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <div id="start-menu" class="screen-overlay">
+    <h1>MORANGO AO LEITE 3D</h1>
+    <div class="diff-title" id="current-diff-label">DIFICULDADE SELECIONADA: (PARA O MARCAO)</div>
+    <button class="menu-btn" onclick="startGame()">PLAY</button>
+    <button class="menu-btn" onclick="toggleDifficultyMenu()">SELECIONAR MODO</button>
+    <button class="menu-btn" onclick="toggleShopMenu()">LOJA DE UPGRADES</button>
+  </div>
+
+  <!-- LOJA DE UPGRADES (3 COLUNAS) -->
+  <div id="shop-menu" class="screen-overlay">
+    <h1 style="font-size: 38px; margin-bottom: 5px;">LOJA DE ARMAS DE MORANGO</h1>
+    <div id="currency-display">🍓 MORANGOS: <span id="shop-coins-text">0</span></div>
+    <p style="color: #ff3366; font-size: 14px; margin-top: 0;">⚠️ ATENÇÃO: Escolha com sabedoria! Ao melhorar 1 coluna, as outras 2 ficam bloqueadas!</p>
+    
+    <div class="shop-container">
+      <!-- COLUNA 1 -->
+      <div class="shop-column" id="col-1">
+        <h2>MORANGOS MAIORES</h2>
+        <p id="desc-col-1">Aumenta drasticamente o tamanho e o dano base dos seus projéteis de morango.</p>
+        <div class="shop-level-indicator" id="lvl-col-1">LEVEL: 0 / 5</div>
+        <button class="shop-buy-btn" id="btn-buy-col-1" onclick="buyUpgrade(1)">COMPRAR (100 🍓)</button>
+      </div>
+
+      <!-- COLUNA 2 -->
+      <div class="shop-column" id="col-2">
+        <h2>MORANGOS COM ESPINHO</h2>
+        <p id="desc-col-2">Adiciona espinhos perfurantes. Aumenta a velocidade do tiro e acertos críticos.</p>
+        <div class="shop-level-indicator" id="lvl-col-2">LEVEL: 0 / 5</div>
+        <button class="shop-buy-btn" id="btn-buy-col-2" onclick="buyUpgrade(2)">COMPRAR (100 🍓)</button>
+      </div>
+
+      <!-- COLUNA 3 -->
+      <div class="shop-column" id="col-3">
+        <h2>MORANGOS FLAMEJANTES</h2>
+        <p id="desc-col-3">Morangos incendiários que causam explosões de fogo e recarregam o especial.</p>
+        <div class="shop-level-indicator" id="lvl-col-3">LEVEL: 0 / 5</div>
+        <button class="shop-buy-btn" id="btn-buy-col-3" onclick="buyUpgrade(3)">COMPRAR (100 🍓)</button>
+      </div>
+    </div>
+
+    <button class="menu-btn" style="background: linear-gradient(45deg, #444, #222); margin-top: 10px;" onclick="toggleShopMenu()">VOLTAR AO MENU</button>
+  </div>
+
+  <div id="difficulty-menu" class="screen-overlay" style="display: none;">
+    <h1 style="font-size: 36px;">SELEÇÃO DE DIFICULDADE</h1>
+    <button id="btn-marcao" class="menu-btn selected" onclick="selectDifficulty('marcao')">(PARA O MARCAO)</button>
+    <button id="btn-easy" class="menu-btn" onclick="selectDifficulty('easy')">FÁCIL</button>
+    <button id="btn-normal" class="menu-btn disabled" onclick="selectDifficulty('normal')">NORMAL 🔒</button>
+    <button id="btn-hard" class="menu-btn disabled" onclick="selectDifficulty('hard')">DIFÍCIL 🔒</button>
+    <button id="btn-impossible" class="menu-btn disabled" onclick="selectDifficulty('impossible')">IMPOSSÍVEL 🔒</button>
+    <button id="btn-secret" class="menu-btn disabled" onclick="selectDifficulty('secret')">??? 🔒</button>
+    <button class="menu-btn" style="background: linear-gradient(45deg, #444, #222); margin-top: 15px;" onclick="toggleDifficultyMenu()">VOLTAR</button>
+  </div>
+
+  <div id="gameover-menu" class="screen-overlay" style="display: none;">
+    <h1 style="color: #ff2222; text-shadow: 0 0 20px #ff0000;">VOCÊ FOI DERROTADO!</h1>
+    <button class="menu-btn" onclick="location.reload()">TENTAR NOVAMENTE</button>
+    <button class="menu-btn" style="background: linear-gradient(45deg, #444, #222);" onclick="giveUp()">DESISTIR</button>
+  </div>
+
+  <div id="victory-screen" class="screen-overlay" style="display: none;">
+    <div class="victory-title" id="victory-text">você o finalizou.. mas a que custo?........</div>
+    <p style="color: #ccc; font-size: 18px; margin-bottom: 30px;" id="victory-sub">O império do açaí foi colapsado para sempre.</p>
+    <button class="menu-btn" onclick="location.reload()">JOGAR NOVAMENTE</button>
+  </div>
+
+  <div id="damage-overlay"></div>
+  <div id="boss-banner">MINI-CHEFE 1</div>
+
+  <div id="hud-coins">🍓 MORANGOS: <span id="hud-coins-text">0</span></div>
+
+  <div id="hud">
+    <div class="bar-wrapper">
+      <span id="boss-label">CHEFE:</span>
+      <div class="bar-container">
+        <div id="boss-health-bar"></div>
+      </div>
+    </div>
+
+    <div id="phase-text">MINI-CHEFE: Leite Condensado Raivoso!</div>
+
+    <div class="bar-wrapper">
+      <span>PLAYER:</span>
+      <div class="bar-container">
+        <div id="player-health-bar"></div>
+      </div>
+    </div>
+
+    <div class="bar-container" id="special-container">
+      <div id="special-bar"></div>
+    </div>
+  </div>
+
+  <div id="controls-hint">
+    <b>W, A, S, D</b>: Mover | <b>Clique Esquerdo</b>: Atirar Morango | <b>Tecla E</b>: SUPER RAIO DE MORANGO
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <script>
+    // --- SISTEMA DE SHOP E ARMAS ---
+    let playerCoins = parseInt(localStorage.getItem('morango_coins') || '0');
+    let chosenColumn = parseInt(localStorage.getItem('morango_chosen_col') || '0'); // 0 = Nenhuma, 1, 2 ou 3
+    let upgradeLevel = parseInt(localStorage.getItem('morango_upg_lvl') || '0'); // 0 a 5
+
+    const UPGRADE_COSTS = [100, 250, 500, 1000, 2000];
+
+    function saveShopData() {
+      localStorage.setItem('morango_coins', playerCoins);
+      localStorage.setItem('morango_chosen_col', chosenColumn);
+      localStorage.setItem('morango_upg_lvl', upgradeLevel);
+    }
+
+    function addCoins(amount) {
+      playerCoins += amount;
+      saveShopData();
+      updateShopUI();
+    }
+
+    function updateShopUI() {
+      document.getElementById('shop-coins-text').innerText = playerCoins;
+      document.getElementById('hud-coins-text').innerText = playerCoins;
+
+      for (let c = 1; c <= 3; c++) {
+        const colElem = document.getElementById(`col-${c}`);
+        const lvlElem = document.getElementById(`lvl-col-${c}`);
+        const btnElem = document.getElementById(`btn-buy-col-${c}`);
+
+        if (chosenColumn !== 0 && chosenColumn !== c) {
+          colElem.classList.add('locked');
+          colElem.classList.remove('active-choice');
+          lvlElem.innerText = "BLOQUEADO";
+          btnElem.innerText = "BLOQUEADO";
+          btnElem.classList.add('disabled');
+        } else {
+          colElem.classList.remove('locked');
+          if (chosenColumn === c) {
+            colElem.classList.add('active-choice');
+            lvlElem.innerText = `LEVEL: ${upgradeLevel} / 5`;
+          } else {
+            colElem.classList.remove('active-choice');
+            lvlElem.innerText = `LEVEL: 0 / 5`;
+          }
+
+          let currentLvl = (chosenColumn === c) ? upgradeLevel : 0;
+
+          if (currentLvl >= 5) {
+            btnElem.innerText = "NÍVEL MÁXIMO!";
+            btnElem.classList.add('disabled');
+          } else {
+            let cost = UPGRADE_COSTS[currentLvl];
+            btnElem.innerText = `MELHORAR (${cost} 🍓)`;
+            if (playerCoins >= cost) {
+              btnElem.classList.remove('disabled');
+            } else {
+              btnElem.classList.add('disabled');
+            }
+          }
+        }
+      }
+    }
+
+    function toggleShopMenu() {
+      const startMenu = document.getElementById('start-menu');
+      const shopMenu = document.getElementById('shop-menu');
+      if (shopMenu.style.display === 'none' || shopMenu.style.display === '') {
+        updateShopUI();
+        startMenu.style.display = 'none';
+        shopMenu.style.display = 'flex';
+      } else {
+        shopMenu.style.display = 'none';
+        startMenu.style.display = 'flex';
+      }
+    }
+
+    function buyUpgrade(col) {
+      if (chosenColumn !== 0 && chosenColumn !== col) return;
+
+      let currentLvl = (chosenColumn === col) ? upgradeLevel : 0;
+      if (currentLvl >= 5) return;
+
+      let cost = UPGRADE_COSTS[currentLvl];
+      if (playerCoins >= cost) {
+        playerCoins -= cost;
+        chosenColumn = col;
+        upgradeLevel++;
+        saveShopData();
+        updateShopUI();
+      }
+    }
+
+    // --- SISTEMA DE MODOS E DIFICULDADE ---
+    const DIFFICULTIES = {
+      marcao: { name: '(PARA O MARCAO)', hpMult: 0.1, dmgMult: 0.05, speedMult: 0.4 },
+      easy: { name: 'FÁCIL', hpMult: 0.7, dmgMult: 0.7, speedMult: 0.85 },
+      normal: { name: 'NORMAL', hpMult: 1.0, dmgMult: 1.0, speedMult: 1.0 },
+      hard: { name: 'DIFÍCIL', hpMult: 1.4, dmgMult: 1.3, speedMult: 1.15 },
+      impossible: { name: 'IMPOSSÍVEL', hpMult: 2.0, dmgMult: 1.7, speedMult: 1.35 },
+      secret: { name: '???', hpMult: 3.0, dmgMult: 2.2, speedMult: 1.6 }
+    };
+
+    let selectedDifficulty = 'marcao';
+
+    function getUnlockedLevel() {
+      return parseInt(localStorage.getItem('morango_unlocked_diff') || '1');
+    }
+
+    function unlockNextDifficulty() {
+      let currentUnlocked = getUnlockedLevel();
+      let diffOrder = ['easy', 'normal', 'hard', 'impossible', 'secret'];
+      let currentIndex = diffOrder.indexOf(selectedDifficulty);
+      if (currentIndex !== -1 && currentIndex + 2 > currentUnlocked && currentUnlocked < 5) {
+        localStorage.setItem('morango_unlocked_diff', currentIndex + 2);
+      }
+    }
+
+    function updateDifficultyUI() {
+      let unlockedLevel = getUnlockedLevel();
+      const diffs = ['marcao', 'easy', 'normal', 'hard', 'impossible', 'secret'];
+      const labels = ['(PARA O MARCAO)', 'FÁCIL', 'NORMAL', 'DIFÍCIL', 'IMPOSSÍVEL', '???'];
+
+      diffs.forEach((diffKey, idx) => {
+        const btn = document.getElementById(`btn-${diffKey}`);
+        if (!btn) return;
+
+        let isUnlocked = true;
+        if (diffKey !== 'marcao') {
+          isUnlocked = (idx) <= unlockedLevel;
+        }
+
+        btn.classList.remove('disabled', 'selected');
+
+        if (isUnlocked) {
+          btn.innerText = labels[idx];
+          if (selectedDifficulty === diffKey) {
+            btn.classList.add('selected');
+          }
+        } else {
+          btn.innerText = `${labels[idx]} 🔒`;
+          btn.classList.add('disabled');
+        }
+      });
+
+      document.getElementById('current-diff-label').innerText = `DIFICULDADE SELECIONADA: ${DIFFICULTIES[selectedDifficulty].name}`;
+    }
+
+    function toggleDifficultyMenu() {
+      const startMenu = document.getElementById('start-menu');
+      const diffMenu = document.getElementById('difficulty-menu');
+      if (diffMenu.style.display === 'none') {
+        updateDifficultyUI();
+        startMenu.style.display = 'none';
+        diffMenu.style.display = 'flex';
+      } else {
+        diffMenu.style.display = 'none';
+        startMenu.style.display = 'flex';
+      }
+    }
+
+    function selectDifficulty(diffKey) {
+      if (diffKey === 'marcao') {
+        selectedDifficulty = diffKey;
+        updateDifficultyUI();
+        return;
+      }
+
+      let unlockedLevel = getUnlockedLevel();
+      const diffs = ['marcao', 'easy', 'normal', 'hard', 'impossible', 'secret'];
+      let targetIndex = diffs.indexOf(diffKey);
+
+      if (targetIndex <= unlockedLevel) {
+        selectedDifficulty = diffKey;
+        updateDifficultyUI();
+      }
+    }
+
+    // Initialize UI state
+    updateDifficultyUI();
+    updateShopUI();
+
+    // --- SINTETIZADOR DE MÚSICA DINÂMICA E INSANA (WEB AUDIO API) ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    let musicInterval = null;
+    let currentBpm = 180;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioContext();
+    }
+
+    function playNote(freq, type, duration, vol = 0.1) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function updateInsaneMusic(intensityLevel) {
+      initAudio();
+      stopMusic();
+
+      currentBpm = Math.max(75, 180 - (intensityLevel * 18));
+      const baseNotes = [110, 130, 146, 164, 174, 196, 220, 246];
+
+      let step = 0;
+      musicInterval = setInterval(() => {
+        const note = baseNotes[(step * (intensityLevel + 1)) % baseNotes.length];
+        playNote(note * (1 + intensityLevel * 0.12), intensityLevel > 2 ? 'sawtooth' : 'square', 0.22, 0.08);
+
+        if (step % 2 === 0) {
+          playNote(note * 2, 'sawtooth', 0.12, 0.04);
+        }
+        step++;
+      }, currentBpm);
+    }
+
+    function playSadMusic() {
+      initAudio();
+      stopMusic();
+      const sadNotes = [220, 196, 174, 164];
+      let step = 0;
+      musicInterval = setInterval(() => {
+        playNote(sadNotes[step % sadNotes.length], 'sine', 1.2, 0.12);
+        step++;
+      }, 1400);
+    }
+
+    function playVictoryMusic() {
+      initAudio();
+      stopMusic();
+      const victoryNotes = [220, 277, 329, 440, 329, 440];
+      let step = 0;
+      musicInterval = setInterval(() => {
+        playNote(victoryNotes[step % victoryNotes.length], 'triangle', 0.8, 0.1);
+        step++;
+      }, 600);
+    }
+
+    function stopMusic() {
+      if (musicInterval) clearInterval(musicInterval);
+    }
+
+    // --- CENA THREE.JS E ILUMINAÇÃO ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a030f);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 25, 17);
+    camera.lookAt(0, -1, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    scene.add(ambientLight);
+
+    const mainLight = new THREE.DirectionalLight(0xfff0dd, 1.4);
+    mainLight.position.set(12, 25, 12);
+    mainLight.castShadow = true;
+    scene.add(mainLight);
+
+    const floorGeo = new THREE.PlaneGeometry(32, 22);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x1b0c21, roughness: 0.5 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(32, 16, 0xff0066, 0x3d1a45);
+    grid.position.y = 0.01;
+    scene.add(grid);
+
+    // --- GERADORES DE MODELOS 3D DETALHADOS ---
+
+    function createRealisticStrawberry(scale = 1, isSpiky = false, isFiery = false) {
+      const group = new THREE.Group();
+      const points = [
+        new THREE.Vector2(0, -0.7 * scale),
+        new THREE.Vector2(0.25 * scale, -0.5 * scale),
+        new THREE.Vector2(0.5 * scale, -0.1 * scale),
+        new THREE.Vector2(0.55 * scale, 0.3 * scale),
+        new THREE.Vector2(0.4 * scale, 0.6 * scale),
+        new THREE.Vector2(0, 0.7 * scale)
+      ];
+
+      const strawberryGeo = new THREE.LatheGeometry(points, 16);
+      const strawberryMat = new THREE.MeshStandardMaterial({ 
+        color: isFiery ? 0xff3300 : 0xff0033, 
+        roughness: 0.2, 
+        metalness: isFiery ? 0.6 : 0.1,
+        emissive: isFiery ? 0xff2200 : 0x000000,
+        emissiveIntensity: isFiery ? 0.6 : 0
+      });
+      const strawberry = new THREE.Mesh(strawberryGeo, strawberryMat);
+      group.add(strawberry);
+
+      const seedGeo = new THREE.SphereGeometry(0.035 * scale, 4, 4);
+      const seedMat = new THREE.MeshBasicMaterial({ color: isFiery ? 0xffff00 : 0xffea00 });
+      for (let i = 0; i < 20; i++) {
+        const seed = new THREE.Mesh(seedGeo, seedMat);
+        const a = (i / 20) * Math.PI * 2;
+        const h = -0.3 + (i % 5) * 0.2;
+        const radius = (0.55 - Math.abs(h) * 0.3) * scale;
+        seed.position.set(Math.cos(a) * radius, h * scale, Math.sin(a) * radius);
+        group.add(seed);
+      }
+
+      // Se for Morango com Espinho (Coluna 2)
+      if (isSpiky) {
+        const spikeGeo = new THREE.ConeGeometry(0.08 * scale, 0.4 * scale, 6);
+        const spikeMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9, roughness: 0.1 });
+        for (let i = 0; i < 12; i++) {
+          const spike = new THREE.Mesh(spikeGeo, spikeMat);
+          const a = (i / 12) * Math.PI * 2;
+          const h = -0.2 + (i % 3) * 0.3;
+          const radius = (0.55 - Math.abs(h) * 0.3) * scale;
+          spike.position.set(Math.cos(a) * radius, h * scale, Math.sin(a) * radius);
+          spike.rotation.x = Math.PI / 2;
+          spike.lookAt(spike.position.clone().multiplyScalar(2));
+          group.add(spike);
+        }
+      }
+
+      // Se for Morango Flamejante (Coluna 3)
+      if (isFiery) {
+        const fireGeo = new THREE.SphereGeometry(0.65 * scale, 8, 8);
+        const fireMat = new THREE.MeshBasicMaterial({ color: 0xffa500, transparent: true, opacity: 0.35 });
+        const fireAura = new THREE.Mesh(fireGeo, fireMat);
+        group.add(fireAura);
+      }
+
+      const leafGeo = new THREE.ConeGeometry(0.25 * scale, 0.08 * scale, 5);
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x00e676 });
+      for(let i = 0; i < 5; i++) {
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        const angle = i * Math.PI * 2 / 5;
+        leaf.position.set(Math.cos(angle) * 0.2 * scale, 0.68 * scale, Math.sin(angle) * 0.2 * scale);
+        leaf.rotation.z = 0.5;
+        leaf.rotation.y = angle;
+        group.add(leaf);
+      }
+      return group;
+    }
+
+    function createPlayerModel() {
+      const group = new THREE.Group();
+      const strawberry = createRealisticStrawberry(1.1);
+      strawberry.position.y = 0.8;
+      strawberry.rotation.x = Math.PI;
+      group.add(strawberry);
+
+      const milkGeo = new THREE.SphereGeometry(0.68, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+      const milkMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, metalness: 0.05 });
+      const milk = new THREE.Mesh(milkGeo, milkMat);
+      milk.position.y = 0.95;
+      group.add(milk);
+      return group;
+    }
+
+    function createCondensedMilkModel(scale = 1.3) {
+      const group = new THREE.Group();
+      const boxGeo = new THREE.BoxGeometry(1.2 * scale, 1.8 * scale, 0.9 * scale);
+      const boxMat = new THREE.MeshStandardMaterial({ color: 0xffea00, roughness: 0.3 });
+      const box = new THREE.Mesh(boxGeo, boxMat);
+      box.position.y = 0.9 * scale;
+      group.add(box);
+
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(1.22 * scale, 0.6 * scale, 0.92 * scale),
+        new THREE.MeshStandardMaterial({ color: 0x0055ff })
+      );
+      stripe.position.y = 0.9 * scale;
+      group.add(stripe);
+
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const eye1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat);
+      eye1.position.set(-0.3 * scale, 1.3 * scale, 0.46 * scale);
+      eye1.rotation.z = -0.3;
+      const eye2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.1), eyeMat);
+      eye2.position.set(0.3 * scale, 1.3 * scale, 0.46 * scale);
+      eye2.rotation.z = 0.3;
+      group.add(eye1); group.add(eye2);
+
+      return group;
+    }
+
+    function createAngryGrapeModel(scale = 1.5) {
+      const group = new THREE.Group();
+      const grapeGeo = new THREE.SphereGeometry(1.0 * scale, 16, 16);
+      const grapeMat = new THREE.MeshStandardMaterial({ color: 0x33cc33, roughness: 0.2 });
+      const grape = new THREE.Mesh(grapeGeo, grapeMat);
+      grape.position.y = 1.0 * scale;
+      group.add(grape);
+
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+      const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), eyeMat);
+      eye1.position.set(-0.35 * scale, 1.2 * scale, 0.85 * scale);
+      const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), eyeMat);
+      eye2.position.set(0.35 * scale, 1.2 * scale, 0.85 * scale);
+      group.add(eye1); group.add(eye2);
+
+      return group;
+    }
+
+    function createNinhoCanModel(scale = 0.8) {
+      const group = new THREE.Group();
+      const canGeo = new THREE.CylinderGeometry(0.5 * scale, 0.5 * scale, 1.1 * scale, 20);
+      const canMat = new THREE.MeshStandardMaterial({ color: 0xdcdcdc, metalness: 0.8, roughness: 0.2 });
+      const can = new THREE.Mesh(canGeo, canMat);
+      can.position.y = 0.55 * scale;
+      group.add(can);
+
+      const labelGeo = new THREE.CylinderGeometry(0.51 * scale, 0.51 * scale, 0.7 * scale, 20);
+      const labelMat = new THREE.MeshStandardMaterial({ color: 0x0055ff, roughness: 0.4 });
+      const label = new THREE.Mesh(labelGeo, labelMat);
+      label.position.y = 0.55 * scale;
+      group.add(label);
+
+      const lidGeo = new THREE.CylinderGeometry(0.53 * scale, 0.53 * scale, 0.1 * scale, 20);
+      const lidMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.5 });
+      const lid = new THREE.Mesh(lidGeo, lidMat);
+      lid.position.y = 1.1 * scale;
+      group.add(lid);
+
+      return group;
+    }
+
+    function createMilkCupWithStrawberriesModel(scale = 0.85) {
+      const group = new THREE.Group();
+
+      const cupGeo = new THREE.CylinderGeometry(0.5 * scale, 0.35 * scale, 1.2 * scale, 16);
+      const cupMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, roughness: 0.1 });
+      const cup = new THREE.Mesh(cupGeo, cupMat);
+      cup.position.y = 0.6 * scale;
+      group.add(cup);
+
+      const milkGeo = new THREE.CylinderGeometry(0.48 * scale, 0.33 * scale, 1.1 * scale, 16);
+      const milkMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+      const milk = new THREE.Mesh(milkGeo, milkMat);
+      milk.position.y = 0.55 * scale;
+      group.add(milk);
+
+      for (let i = 0; i < 3; i++) {
+        const straw = createRealisticStrawberry(0.25 * scale);
+        const angle = i * (Math.PI * 2 / 3);
+        straw.position.set(Math.cos(angle) * 0.2 * scale, (0.8 + i * 0.1) * scale, Math.sin(angle) * 0.2 * scale);
+        straw.rotation.z = 0.3;
+        group.add(straw);
+      }
+
+      return group;
+    }
+
+    function createAcaiCupModel(scale = 0.7) {
+      const group = new THREE.Group();
+
+      const cupGeo = new THREE.CylinderGeometry(0.5 * scale, 0.35 * scale, 1.2 * scale, 16);
+      const cupMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, roughness: 0.1 });
+      const cup = new THREE.Mesh(cupGeo, cupMat);
+      cup.position.y = 0.6 * scale;
+      group.add(cup);
+
+      const acaiGeo = new THREE.CylinderGeometry(0.48 * scale, 0.33 * scale, 1.15 * scale, 16);
+      const acaiMat = new THREE.MeshStandardMaterial({ color: 0x240024, roughness: 0.3 });
+      const acai = new THREE.Mesh(acaiGeo, acaiMat);
+      acai.position.y = 0.58 * scale;
+      group.add(acai);
+
+      const domeGeo = new THREE.SphereGeometry(0.51 * scale, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+      const domeMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, roughness: 0.1 });
+      const dome = new THREE.Mesh(domeGeo, domeMat);
+      dome.position.y = 1.2 * scale;
+      group.add(dome);
+
+      return group;
+    }
+
+    function createAcaiNinhoCupModel(scale = 0.75) {
+      const group = createAcaiCupModel(scale);
+
+      const ninhoLayerGeo = new THREE.CylinderGeometry(0.49 * scale, 0.42 * scale, 0.25 * scale, 16);
+      const ninhoLayerMat = new THREE.MeshStandardMaterial({ color: 0xfff8dc, roughness: 0.8 });
+      const ninhoLayer = new THREE.Mesh(ninhoLayerGeo, ninhoLayerMat);
+      ninhoLayer.position.y = 0.7 * scale;
+      group.add(ninhoLayer);
+
+      const topNinhoGeo = new THREE.ConeGeometry(0.45 * scale, 0.4 * scale, 12);
+      const topNinho = new THREE.Mesh(topNinhoGeo, ninhoLayerMat);
+      topNinho.position.y = 1.35 * scale;
+      group.add(topNinho);
+
+      return group;
+    }
+
+    function createAcaiBowlModel(scale = 1) {
+      const group = new THREE.Group();
+      const bowlGeo = new THREE.CylinderGeometry(1.6 * scale, 1.0 * scale, 1.2 * scale, 24);
+      const bowlMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.1, metalness: 0.1 });
+      const bowl = new THREE.Mesh(bowlGeo, bowlMat);
+      bowl.position.y = (0.6 * scale);
+      group.add(bowl);
+
+      const acaiGeo = new THREE.CylinderGeometry(1.52 * scale, 1.4 * scale, 0.3 * scale, 24);
+      const acaiMat = new THREE.MeshStandardMaterial({ color: 0x240024, roughness: 0.3 });
+      const acai = new THREE.Mesh(acaiGeo, acaiMat);
+      acai.position.y = (1.1 * scale);
+      group.add(acai);
+
+      const ninhoGeo = new THREE.CylinderGeometry(1.4 * scale, 1.3 * scale, 0.05 * scale, 20);
+      const ninhoMat = new THREE.MeshStandardMaterial({ color: 0xfff8dc, roughness: 0.9 });
+      const ninho = new THREE.Mesh(ninhoGeo, ninhoMat);
+      ninho.position.y = (1.23 * scale);
+      group.add(ninho);
+
+      const bananaGeo = new THREE.CylinderGeometry(0.25 * scale, 0.25 * scale, 0.06 * scale, 12);
+      const bananaMat = new THREE.MeshStandardMaterial({ color: 0xfff3a0, roughness: 0.4 });
+      for (let i = 0; i < 5; i++) {
+        const banana = new THREE.Mesh(bananaGeo, bananaMat);
+        const angle = i * 1.2;
+        banana.position.set(Math.cos(angle) * 0.8 * scale, 1.27 * scale, Math.sin(angle) * 0.8 * scale);
+        group.add(banana);
+      }
+
+      const strawPiece = createRealisticStrawberry(0.3 * scale);
+      strawPiece.position.set(0, 1.35 * scale, 0);
+      strawPiece.rotation.z = 1.2;
+      group.add(strawPiece);
+
+      return group;
+    }
+
+    function createAcaiPileModel() {
+      const group = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: 0x240024, roughness: 0.4 });
+      const ninhoMat = new THREE.MeshStandardMaterial({ color: 0xfff8dc, roughness: 0.9 });
+
+      for (let i = 0; i < 14; i++) {
+        const radius = 0.5 + Math.random() * 0.7;
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(radius, 12, 12), mat);
+        sphere.position.set((Math.random() - 0.5) * 2.2, radius * 0.6, (Math.random() - 0.5) * 2.2);
+        group.add(sphere);
+
+        if (Math.random() > 0.4) {
+          const ninhoSpot = new THREE.Mesh(new THREE.SphereGeometry(radius * 0.8, 8, 8), ninhoMat);
+          ninhoSpot.position.copy(sphere.position);
+          ninhoSpot.position.y += 0.2;
+          group.add(ninhoSpot);
+        }
+      }
+      return group;
+    }
+
+    // --- MODELO SUPREMO DO CRIADOR DO AÇAÍ COM LEITE NINHO ---
+    function createAcaiCreatorModel(phase = 1) {
+      const group = new THREE.Group();
+
+      const bodyGeo = new THREE.CylinderGeometry(0.9, 0.5, 2.5, 16);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x12001a, roughness: 0.1, metalness: 0.9 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 1.25;
+      group.add(body);
+
+      const chestPlate = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.95, 0.85, 0.8, 16),
+        new THREE.MeshStandardMaterial({ color: 0x240024, metalness: 0.95, roughness: 0.1 })
+      );
+      chestPlate.position.y = 1.7;
+      group.add(chestPlate);
+
+      const headGeo = new THREE.SphereGeometry(0.7, 20, 20);
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xfff8dc, roughness: 0.3, metalness: 0.2 });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.y = 2.85;
+      group.add(head);
+
+      const haloGeo = new THREE.TorusGeometry(1.2, 0.08, 16, 32);
+      const haloMat = new THREE.MeshStandardMaterial({ color: 0xff00bb, emissive: 0xaa0088, roughness: 0.1, metalness: 0.8 });
+      const halo = new THREE.Mesh(haloGeo, haloMat);
+      halo.rotation.x = Math.PI / 2;
+      halo.position.y = 3.6;
+      group.add(halo);
+
+      const crownGeo = new THREE.ConeGeometry(0.8, 0.9, 6);
+      const crownMat = new THREE.MeshStandardMaterial({ color: 0x3b0042, metalness: 0.95, roughness: 0.05 });
+      const crown = new THREE.Mesh(crownGeo, crownMat);
+      crown.position.y = 3.6;
+      group.add(crown);
+
+      const eyeGeo = new THREE.SphereGeometry(0.13, 12, 12);
+      const eyeMat = new THREE.MeshBasicMaterial({ color: phase >= 3 ? 0xffff00 : 0xff0055 });
+      const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeL.position.set(-0.26, 2.95, 0.6);
+      const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeR.position.set(0.26, 2.95, 0.6);
+      group.add(eyeL); group.add(eyeR);
+
+      // ESPADA EPICA DE AÇAI COM LEITE NINHO (Fases 2+)
+      if (phase >= 2) {
+        const swordGroup = new THREE.Group();
+
+        const bladeCoreGeo = new THREE.BoxGeometry(0.18, 3.4, 0.45);
+        const bladeCoreMat = new THREE.MeshStandardMaterial({ color: 0x200028, roughness: 0.1, metalness: 0.9 });
+        const bladeCore = new THREE.Mesh(bladeCoreGeo, bladeCoreMat);
+        bladeCore.position.y = 1.7;
+        swordGroup.add(bladeCore);
+
+        const edgeL = new THREE.Mesh(
+          new THREE.BoxGeometry(0.22, 3.4, 0.08),
+          new THREE.MeshStandardMaterial({ color: 0xfff8dc, roughness: 0.2, metalness: 0.6 })
+        );
+        edgeL.position.set(0, 1.7, 0.23);
+        swordGroup.add(edgeL);
+
+        const edgeR = new THREE.Mesh(
+          new THREE.BoxGeometry(0.22, 3.4, 0.08),
+          new THREE.MeshStandardMaterial({ color: 0xfff8dc, roughness: 0.2, metalness: 0.6 })
+        );
+        edgeR.position.set(0, 1.7, -0.23);
+        swordGroup.add(edgeR);
+
+        const guardGeo = new THREE.BoxGeometry(0.5, 0.2, 1.2);
+        const guardMat = new THREE.MeshStandardMaterial({ color: 0xff00bb, metalness: 0.9, roughness: 0.1 });
+        const guard = new THREE.Mesh(guardGeo, guardMat);
+        guard.position.y = 0.1;
+        swordGroup.add(guard);
+
+        const hiltGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 12);
+        const hiltMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+        const hilt = new THREE.Mesh(hiltGeo, hiltMat);
+        hilt.position.y = -0.4;
+        swordGroup.add(hilt);
+
+        const gemGeo = new THREE.OctahedronGeometry(0.25);
+        const gemMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+        const gem = new THREE.Mesh(gemGeo, gemMat);
+        gem.position.set(0, 0.1, 0);
+        swordGroup.add(gem);
+
+        swordGroup.position.set(1.2, 1.4, 0.3);
+        swordGroup.rotation.x = 0.35;
+        group.add(swordGroup);
+      }
+
+      return group;
+    }
+
+    // --- CRIADOR DE PORTAS DE MASMORRA ---
+    function createDungeonDoor(isBossDoor = false, isSecretDoor = false) {
+      const doorGroup = new THREE.Group();
+
+      let stoneColor = isBossDoor ? 0x210b1a : 0x3a3a40;
+      let doorColor = isBossDoor ? 0x3d0012 : 0x4a2e18;
+      let metalColor = isBossDoor ? 0xff0055 : 0x888899;
+
+      if (isSecretDoor) {
+        stoneColor = 0x0a0012;
+        doorColor = 0x1a002b;
+        metalColor = 0xaa00ff;
+      }
+
+      const stoneMat = new THREE.MeshStandardMaterial({ color: stoneColor, roughness: 0.8, metalness: 0.3 });
+      const doorMat = new THREE.MeshStandardMaterial({ color: doorColor, roughness: 0.6 });
+      const metalMat = new THREE.MeshStandardMaterial({ color: metalColor, metalness: 0.9, roughness: 0.2 });
+      const goldMat = new THREE.MeshStandardMaterial({ color: isSecretDoor ? 0x9900ff : 0xffcc00, metalness: 0.9, roughness: 0.1 });
+
+      const w = (isBossDoor || isSecretDoor) ? 6 : 4.5;
+      const h = (isBossDoor || isSecretDoor) ? 8 : 6;
+
+      // Moldura de Pedra da Porta
+      const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, 0.8), stoneMat);
+      frameL.position.set(-w / 2, h / 2, 0);
+      doorGroup.add(frameL);
+
+      const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, 0.8), stoneMat);
+      frameR.position.set(w / 2, h / 2, 0);
+      doorGroup.add(frameR);
+
+      const frameTop = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 0.9, 0.8), stoneMat);
+      frameTop.position.set(0, h + 0.4, 0);
+      doorGroup.add(frameTop);
+
+      // Portas de Madeira / Cristal Púrpura
+      const doorLGroup = new THREE.Group();
+      doorLGroup.position.set(-w / 2 + 0.4, 0, 0);
+      const leafL = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.4, h - 0.2, 0.3), doorMat);
+      leafL.position.set((w / 2 - 0.4) / 2, h / 2, 0);
+      doorLGroup.add(leafL);
+
+      const doorRGroup = new THREE.Group();
+      doorRGroup.position.set(w / 2 - 0.4, 0, 0);
+      const leafR = new THREE.Mesh(new THREE.BoxGeometry(w / 2 - 0.4, h - 0.2, 0.3), doorMat);
+      leafR.position.set(-(w / 2 - 0.4) / 2, h / 2, 0);
+      doorRGroup.add(leafR);
+
+      if (isBossDoor || isSecretDoor) {
+        const skullGeo = new THREE.SphereGeometry(0.7, 8, 8);
+        const skull = new THREE.Mesh(skullGeo, goldMat);
+        skull.position.set(0, h + 0.5, 0.4);
+        doorGroup.add(skull);
+
+        const hornGeo = new THREE.ConeGeometry(0.3, 1.2, 8);
+        const hornL = new THREE.Mesh(hornGeo, metalMat);
+        hornL.position.set(-0.8, h + 1.0, 0.4);
+        hornL.rotation.z = -0.4;
+        doorGroup.add(hornL);
+
+        const hornR = new THREE.Mesh(hornGeo, metalMat);
+        hornR.position.set(0.8, h + 1.0, 0.4);
+        hornR.rotation.z = 0.4;
+        doorGroup.add(hornR);
+
+        const light = new THREE.PointLight(isSecretDoor ? 0xaa00ff : 0xff0055, 4, 14);
+        light.position.set(0, h / 2, 1);
+        doorGroup.add(light);
+      } else {
+        const arch = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, w, 12), metalMat);
+        arch.rotation.z = Math.PI / 2;
+        arch.position.set(0, h, 0.2);
+        doorGroup.add(arch);
+      }
+
+      doorGroup.add(doorLGroup);
+      doorGroup.add(doorRGroup);
+
+      return {
+        mesh: doorGroup,
+        doorLGroup,
+        doorRGroup,
+        targetAngle: Math.PI * 0.55,
+        currentAngle: 0,
+        isBossDoor,
+        isSecretDoor
+      };
+    }
+
+    const playerGroup = createPlayerModel();
+    playerGroup.position.set(0, 0, 6);
+    scene.add(playerGroup);
+
+    let bossGroup = createCondensedMilkModel();
+    bossGroup.position.set(0, 0, -2);
+    scene.add(bossGroup);
+
+    let dungeonDoor = createDungeonDoor(false);
+    dungeonDoor.mesh.position.set(0, 0, -9.5);
+    scene.add(dungeonDoor.mesh);
+
+    // --- ESTADO DO JOGO ---
+    const state = {
+      gameStarted: false,
+      gameOver: false,
+      stage: 1, // 1: Leite Condensado, 2: Uva Brava, 3: Boss Tigela de Açaí, 4: O Criador (True Ending)
+      player: { x: 0, z: 6, hp: 100, maxHp: 100, speed: 0.22, radius: 1.1, invulnerable: 0 },
+      boss: { x: 0, z: -2, hp: 400, maxHp: 400, dirZ: 1, speed: 0.08, radius: 1.8, inTransition: false, isDying: false },
+      phase: 1, // Fases internas
+      special: 0,
+      lastShoot: 0,
+      lastBossShoot: 0,
+      lastMinionSpawn: 0,
+      lastAcaiRain: 0,
+      lastLaserShoot: 0,
+      waitingForDoor: false,
+      activeDoor: dungeonDoor,
+      finalizeTimer: null,
+      secretDoorSpawned: false,
+      isTrueEnding: false,
+      keys: {},
+      raycaster: new THREE.Raycaster(),
+      mouseVec: new THREE.Vector2(),
+      targetPoint: new THREE.Vector3()
+    };
+
+    let bulletsPlayer = [];
+    let bulletsBoss = [];
+    let minions = [];
+    let particles = [];
+    let fallingAcais = [];
+    let activeBeam = null;
+    let textProjectiles = [];
+
+    function getDistance2D(p1, p2) {
+      return Math.hypot(p1.x - p2.x, p1.z - p2.z);
+    }
+
+    // --- INTERFACE E MENUS ---
+    function startGame() {
+      document.getElementById('start-menu').style.display = 'none';
+      document.getElementById('hud').style.display = 'flex';
+      document.getElementById('controls-hint').style.display = 'block';
+      
+      // Aplica modificadores de Dificuldade
+      const diffConfig = DIFFICULTIES[selectedDifficulty];
+      state.boss.maxHp = Math.round(400 * diffConfig.hpMult);
+      state.boss.hp = state.boss.maxHp;
+
+      state.gameStarted = true;
+      updateInsaneMusic(1);
+    }
+
+    function showGameOver() {
+      state.gameOver = true;
+      document.getElementById('hud').style.display = 'none';
+      document.getElementById('controls-hint').style.display = 'none';
+      document.getElementById('gameover-menu').style.display = 'flex';
+      playSadMusic();
+    }
+
+    function showVictory() {
+      state.gameOver = true;
+      document.getElementById('hud').style.display = 'none';
+      document.getElementById('controls-hint').style.display = 'none';
+
+      // Desbloqueia a próxima dificuldade
+      unlockNextDifficulty();
+
+      if (state.isTrueEnding) {
+        document.getElementById('victory-text').innerText = "VOCÊ DERROTOU O CRIADOR DO AÇAÍ!";
+        document.getElementById('victory-sub').innerText = "TRUE ENDING: O segredo supremo da receita do Morango ao Leite foi revelado e liberto!";
+      }
+
+      document.getElementById('victory-screen').style.display = 'flex';
+      playVictoryMusic();
+    }
+
+    function giveUp() {
+      alert("Você desistiu...");
+      window.close();
+      setTimeout(() => {
+        document.body.innerHTML = "<h1 style='color:white; text-align:center; margin-top:20%;'>Jogo encerrado. Você pode fechar esta aba.</h1>";
+      }, 300);
+    }
+
+    // --- CONTROLES ---
+    window.addEventListener('keydown', e => {
+      state.keys[e.code] = true;
+      if (e.code === 'KeyE' && state.gameStarted && !state.gameOver) fireSpecialBeam();
+    });
+    window.addEventListener('keyup', e => state.keys[e.code] = false);
+
+    const planeRay = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    window.addEventListener('mousemove', e => {
+      state.mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
+      state.mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      state.raycaster.setFromCamera(state.mouseVec, camera);
+      state.raycaster.ray.intersectPlane(planeRay, state.targetPoint);
+    });
+
+    window.addEventListener('mousedown', e => {
+      if (e.button === 0 && state.gameStarted && !state.gameOver) shootPlayer();
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- ANIMAÇÃO DE DESTRUIÇÃO DO CHEFE / AÇAÍ ---
+    function animateBossDefeat(callback) {
+      state.boss.isDying = true;
+      let startY = bossGroup.position.y;
+      let startTime = performance.now();
+      let duration = 1800;
+
+      for (let m of minions) scene.remove(m.mesh);
+      minions = [];
+
+      function dieLoop() {
+        let elapsed = performance.now() - startTime;
+        let p = Math.min(1, elapsed / duration);
+
+        bossGroup.rotation.z = Math.sin(p * Math.PI * 8) * 0.35 * (1 - p);
+        bossGroup.rotation.x = p * 1.2;
+        bossGroup.scale.set(1 - p * 0.4, 1 - p * 0.4, 1 - p * 0.4);
+        bossGroup.position.y = startY - p * 2.5;
+
+        disintegrateMinion(bossGroup.position);
+
+        if (p < 1) {
+          requestAnimationFrame(dieLoop);
+        } else {
+          scene.remove(bossGroup);
+          state.boss.isDying = false;
+          if (callback) callback();
+        }
+      }
+      dieLoop();
+    }
+
+    // --- PROGRESSÃO DE FASES E PORTAS DA MASMORRA ---
+    function handleBossDeathSequence() {
+      if (state.boss.inTransition || state.boss.isDying) return;
+
+      if (state.stage === 4 && state.phase === 4) {
+        animateBossDefeat(() => {
+          showVictory();
+        });
+        return;
+      }
+
+      if (state.stage === 3 && state.phase === 4) {
+        if (state.finalizeTimer) clearTimeout(state.finalizeTimer);
+        animateBossDefeat(() => {
+          showVictory();
+        });
+        return;
+      }
+
+      if (state.stage === 3 && state.phase < 4) {
+        nextStageOrPhase();
+        return;
+      }
+
+      if (state.stage === 4 && state.phase < 4) {
+        nextStageOrPhase();
+        return;
+      }
+
+      // Derrotou Mini-Chefe 1 ou 2 -> Anima destruição e abre a porta
+      animateBossDefeat(() => {
+        spawnDungeonDoorForNextStage();
+      });
+    }
+
+    function spawnDungeonDoorForNextStage() {
+      state.waitingForDoor = true;
+      const isNextBossFinal = (state.stage === 2);
+
+      scene.remove(state.activeDoor.mesh);
+      state.activeDoor = createDungeonDoor(isNextBossFinal, false);
+      state.activeDoor.mesh.position.set(0, 0, -9.5);
+      scene.add(state.activeDoor.mesh);
+
+      const banner = document.getElementById('boss-banner');
+      banner.innerText = isNextBossFinal ? "A PORTA DO CHEFÃO SE ABRIU!" : "A PORTA DA MASMORRA SE ABRIU!";
+      banner.style.transform = "translate(-50%, -50%) scale(1.1)";
+
+      setTimeout(() => {
+        banner.style.transform = "translate(-50%, -50%) scale(0)";
+      }, 2500);
+    }
+
+    function spawnSecretPurpleDoor() {
+      if (state.secretDoorSpawned) return;
+      state.secretDoorSpawned = true;
+      state.waitingForDoor = true;
+
+      scene.remove(state.activeDoor.mesh);
+      state.activeDoor = createDungeonDoor(true, true);
+      state.activeDoor.mesh.position.set(0, 0, -9.5);
+      scene.add(state.activeDoor.mesh);
+
+      const banner = document.getElementById('boss-banner');
+      banner.innerText = "UMA PORTA SECRETA SE ABRIU ATRÁS DO BOSS!";
+      banner.style.color = "#bb00ff";
+      banner.style.transform = "translate(-50%, -50%) scale(1.1)";
+
+      setTimeout(() => {
+        banner.style.transform = "translate(-50%, -50%) scale(0)";
+      }, 3000);
+    }
+
+    function enterNextStageThroughDoor() {
+      if (!state.activeDoor) return;
+
+      if (state.activeDoor.isSecretDoor) {
+        scene.remove(state.activeDoor.mesh);
+        state.waitingForDoor = false;
+        playerGroup.position.set(0, 0, 7);
+        startCreatorBossStage();
+        return;
+      }
+
+      scene.remove(state.activeDoor.mesh);
+      const isNextBossFinal = (state.stage === 2);
+      state.activeDoor = createDungeonDoor(isNextBossFinal, false);
+      state.activeDoor.mesh.position.set(0, 0, -9.5);
+      scene.add(state.activeDoor.mesh);
+
+      state.waitingForDoor = false;
+      playerGroup.position.set(0, 0, 7);
+
+      nextStageOrPhase();
+    }
+
+    function startCreatorBossStage() {
+      state.isTrueEnding = true;
+      state.stage = 4;
+      state.phase = 1;
+      state.boss.inTransition = true;
+
+      if (bossGroup) scene.remove(bossGroup);
+      bossGroup = createAcaiCreatorModel(1);
+      bossGroup.position.set(0, 0, -2);
+      scene.add(bossGroup);
+
+      const diffConfig = DIFFICULTIES[selectedDifficulty];
+      state.boss.maxHp = Math.round(2500 * diffConfig.hpMult);
+      state.boss.hp = state.boss.maxHp;
+      state.boss.radius = 1.6;
+
+      const banner = document.getElementById('boss-banner');
+      const phaseText = document.getElementById('phase-text');
+      phaseText.innerText = "CRIADOR DO AÇAÍ COM LEITE NINHO - Fase 1";
+      banner.innerText = "O CRIADOR SUPREMO APARECEU!";
+      banner.style.color = "#ff00bb";
+      banner.style.transform = "translate(-50%, -50%) scale(1.1)";
+
+      updateInsaneMusic(6);
+
+      setTimeout(() => {
+        banner.style.transform = "translate(-50%, -50%) scale(0)";
+        state.boss.inTransition = false;
+      }, 2500);
+    }
+
+    function nextStageOrPhase() {
+      state.boss.inTransition = true;
+      const banner = document.getElementById('boss-banner');
+      const phaseText = document.getElementById('phase-text');
+      const diffConfig = DIFFICULTIES[selectedDifficulty];
+
+      if (state.stage === 1) {
+        state.stage = 2;
+        bossGroup = createAngryGrapeModel();
+        bossGroup.position.set(0, 0, -2);
+        scene.add(bossGroup);
+
+        state.boss.maxHp = Math.round(600 * diffConfig.hpMult);
+        state.boss.hp = state.boss.maxHp;
+        phaseText.innerText = "MINI-CHEFE: Uva Brava enciumada!";
+        banner.innerText = "MINI-CHEFE 2: UVA BRAVA!";
+        updateInsaneMusic(2);
+
+      } else if (state.stage === 2) {
+        state.stage = 3;
+        state.phase = 1;
+        bossGroup = createAcaiBowlModel(1.3);
+        bossGroup.position.set(0, 0, -2);
+        scene.add(bossGroup);
+
+        scene.remove(state.activeDoor.mesh);
+
+        state.boss.maxHp = Math.round(1800 * diffConfig.hpMult);
+        state.boss.hp = state.boss.maxHp;
+        phaseText.innerText = "CHEFE PRINCIPAL: Tigela de Açaí - Fase 1";
+        banner.innerText = "O CHEFÃO SUPREMO CHEGOU!";
+        updateInsaneMusic(3);
+
+      } else if (state.stage === 3) {
+        state.phase++;
+
+        if (state.phase === 2) {
+          phaseText.innerText = "CHEFE PRINCIPAL: Fase 2 - Lançando Copos de Açaí!";
+          banner.innerText = "FASE 2!";
+          updateInsaneMusic(4);
+        } else if (state.phase === 3) {
+          phaseText.innerText = "CHEFE PRINCIPAL: Fase 3 - Fúria Extrema de Ninho!";
+          banner.innerText = "FASE 3: MODO INSANO!";
+          updateInsaneMusic(5);
+        } else if (state.phase === 4) {
+          let currentPos = bossGroup.position.clone();
+          scene.remove(bossGroup);
+          bossGroup = createAcaiPileModel();
+          bossGroup.position.copy(currentPos);
+          scene.add(bossGroup);
+
+          state.boss.maxHp = Math.round(250 * diffConfig.hpMult);
+          state.boss.hp = state.boss.maxHp;
+
+          phaseText.innerText = "FINALIZE-O E SE TORNE O MELHOR!";
+          banner.innerText = "FINALIZE-O!";
+
+          // Temporizador de 10 segundos para revelar a porta secreta do Criador
+          state.finalizeTimer = setTimeout(() => {
+            if (state.stage === 3 && state.phase === 4 && state.boss.hp > 0) {
+              spawnSecretPurpleDoor();
+            }
+          }, 10000);
+        }
+      } else if (state.stage === 4) {
+        state.phase++;
+        let currentPos = bossGroup.position.clone();
+        scene.remove(bossGroup);
+        bossGroup = createAcaiCreatorModel(state.phase);
+        bossGroup.position.copy(currentPos);
+        scene.add(bossGroup);
+
+        if (state.phase === 2) {
+          phaseText.innerText = "CRIADOR DO AÇAÍ: Fase 2 - Espada de Açaí e Leite Ninho!";
+          banner.innerText = "MODO CORPO A CORPO!";
+        } else if (state.phase === 3) {
+          phaseText.innerText = "CRIADOR DO AÇAÍ: Fase 3 - Lasers Amarelos!";
+          banner.innerText = "LASERS DOS OLHOS!";
+        } else if (state.phase === 4) {
+          phaseText.innerText = "CRIADOR DO AÇAÍ: Fase Final - FÚRIA TOTAL!";
+          banner.innerText = "ATAQUE FINAL COMBINADO!";
+        }
+      }
+
+      banner.style.transform = "translate(-50%, -50%) scale(1.1)";
+      for (let i = 0; i < 40; i++) disintegrateMinion(bossGroup.position);
+
+      setTimeout(() => {
+        banner.style.transform = "translate(-50%, -50%) scale(0)";
+        state.boss.inTransition = false;
+      }, 2200);
+    }
+
+    function spawnTargetedAcai(isCreatorCombo = false) {
+      const targetPos = playerGroup.position.clone();
+      const markerGeo = new THREE.RingGeometry(0.1, 1.8, 32);
+      const markerMat = new THREE.MeshBasicMaterial({ color: isCreatorCombo ? 0xff00bb : 0xff0033, side: THREE.DoubleSide });
+      const marker = new THREE.Mesh(markerGeo, markerMat);
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.set(targetPos.x, 0.03, targetPos.z);
+      scene.add(marker);
+
+      const acaiMesh = isCreatorCombo ? createAcaiNinhoCupModel(1.2) : createAcaiCupModel(1.2);
+      acaiMesh.position.set(targetPos.x, 18, targetPos.z);
+      scene.add(acaiMesh);
+
+      const diffConfig = DIFFICULTIES[selectedDifficulty];
+      fallingAcais.push({
+        mesh: acaiMesh, marker, target: targetPos, startTime: performance.now(), duration: 1000 / diffConfig.speedMult
+      });
+    }
+
+    function shootCreatorEyeLasers() {
+      const eyePosL = bossGroup.position.clone().add(new THREE.Vector3(-0.26, 2.95, 0.6));
+      const eyePosR = bossGroup.position.clone().add(new THREE.Vector3(0.26, 2.95, 0.6));
+      const targetPos = playerGroup.position.clone();
+
+      const lineGeoL = new THREE.BufferGeometry().setFromPoints([eyePosL, targetPos]);
+      const lineGeoR = new THREE.BufferGeometry().setFromPoints([eyePosR, targetPos]);
+      const lineMat = new THREE.LineDashedMaterial({ color: 0xff0000, dashSize: 0.2, gapSize: 0.1 });
+      
+      const lineL = new THREE.Line(lineGeoL, lineMat);
+      const lineR = new THREE.Line(lineGeoR, lineMat);
+      lineL.computeLineDistances();
+      lineR.computeLineDistances();
+
+      scene.add(lineL);
+      scene.add(lineR);
+
+      const diffConfig = DIFFICULTIES[selectedDifficulty];
+
+      setTimeout(() => {
+        scene.remove(lineL);
+        scene.remove(lineR);
+
+        [eyePosL, eyePosR].forEach(pos => {
+          const dir = new THREE.Vector3().subVectors(targetPos, pos).normalize();
+          const laserGeo = new THREE.CylinderGeometry(0.08, 0.08, 20, 8);
+          const laserMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+          const laser = new THREE.Mesh(laserGeo, laserMat);
+
+          laser.position.copy(pos).addScaledVector(dir, 10);
+          laser.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+          scene.add(laser);
+
+          setTimeout(() => scene.remove(laser), 100);
+        });
+
+        if (getDistance2D(playerGroup.position, targetPos) < 1.4) {
+          damagePlayer(15 * diffConfig.dmgMult);
+        }
+      }, 450 / diffConfig.speedMult);
+    }
+
+    function disintegrateMinion(pos) {
+      for (let i = 0; i < 20; i++) {
+        const isAcai = Math.random() > 0.3;
+        const p = new THREE.Mesh(
+          new THREE.BoxGeometry(0.15, 0.15, 0.15),
+          new THREE.MeshStandardMaterial({ color: isAcai ? 0x240024 : 0xfff8dc, roughness: 0.5 })
+        );
+        p.position.copy(pos);
+        p.position.y = 0.5;
+
+        const vel = new THREE.Vector3((Math.random() - 0.5) * 0.7, Math.random() * 0.6 + 0.2, (Math.random() - 0.5) * 0.7);
+        scene.add(p);
+        particles.push({ mesh: p, vel, life: 1.0 });
+      }
+    }
+
+    function damagePlayer(amount) {
+      if (Date.now() < state.player.invulnerable || state.gameOver) return;
+
+      state.player.hp = Math.max(0, state.player.hp - amount);
+      state.player.invulnerable = Date.now() + 600;
+
+      document.getElementById('player-health-bar').style.width = `${(state.player.hp / state.player.maxHp) * 100}%`;
+
+      const overlay = document.getElementById('damage-overlay');
+      overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.4)';
+      setTimeout(() => overlay.style.backgroundColor = 'rgba(255, 0, 0, 0)', 150);
+
+      if (state.player.hp <= 0) showGameOver();
+    }
+
+    // --- ATAQUES ---
+
+    function shootPlayer() {
+      const now = performance.now();
+      if (now - state.lastShoot < 120) return;
+      state.lastShoot = now;
+
+      const dir = new THREE.Vector3().subVectors(state.targetPoint, playerGroup.position);
+      dir.y = 0; dir.normalize();
+
+      // PARÂMETROS BASE
+      let scale = 0.45;
+      let projSpeed = 0.52;
+      let projDamage = 22;
+      let projRadius = 0.4;
+      let isSpiky = false;
+      let isFiery = false;
+
+      // PARÂMETROS CALCULADOS DOS UPGRADES
+      if (chosenColumn === 1) { // Morangos Maiores
+        scale += upgradeLevel * 0.25;
+        projDamage += upgradeLevel * 18;
+        projRadius += upgradeLevel * 0.15;
+      } else if (chosenColumn === 2) { // Morangos com Espinho
+        isSpiky = true;
+        projSpeed += upgradeLevel * 0.12;
+        projDamage += upgradeLevel * 8;
+      } else if (chosenColumn === 3) { // Morangos Flamejantes
+        isFiery = true;
+        projDamage += upgradeLevel * 12;
+      }
+
+      const strawberryProj = createRealisticStrawberry(scale, isSpiky, isFiery);
+      strawberryProj.position.copy(playerGroup.position);
+      strawberryProj.position.y = 0.8;
+      strawberryProj.rotation.x = Math.PI / 2;
+      scene.add(strawberryProj);
+
+      bulletsPlayer.push({ mesh: strawberryProj, dir, speed: projSpeed, damage: projDamage, radius: projRadius, isFiery, isSpiky });
+    }
+
+    function fireSpecialBeam() {
+      if (state.special < 100 || activeBeam) return;
+      state.special = 0;
+      document.getElementById('special-bar').style.width = '0%';
+
+      const beamLength = 35;
+      const beamGroup = new THREE.Group();
+
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, beamLength, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      core.rotation.x = Math.PI / 2; core.position.z = beamLength / 2;
+      beamGroup.add(core);
+
+      const aura = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, beamLength, 16), new THREE.MeshBasicMaterial({ color: 0xff0044, transparent: true, opacity: 0.55 }));
+      aura.rotation.x = Math.PI / 2; aura.position.z = beamLength / 2;
+      beamGroup.add(aura);
+
+      for(let i = 0; i < 16; i++) {
+        const pStr = createRealisticStrawberry(0.25);
+        pStr.position.set((Math.random() - 0.5) * 1.4, (Math.random() - 0.5) * 1.4, Math.random() * beamLength);
+        beamGroup.add(pStr);
+      }
+
+      beamGroup.position.copy(playerGroup.position);
+      beamGroup.position.y = 0.8;
+
+      const target = state.targetPoint.clone();
+      target.y = 0.8;
+      beamGroup.lookAt(target);
+
+      scene.add(beamGroup);
+
+      const dir = new THREE.Vector3().subVectors(state.targetPoint, playerGroup.position);
+      dir.y = 0; dir.normalize();
+
+      activeBeam = { mesh: beamGroup, dir: dir, startTime: performance.now(), duration: 900 };
+    }
+
+    function bossShoot() {
+      if (state.boss.isDying || state.waitingForDoor) return;
+
+      const dir = new THREE.Vector3().subVectors(playerGroup.position, bossGroup.position);
+      dir.y = 0; dir.normalize();
+
+      let mesh;
+      let projSpeed = 0.22;
+      let projDamage = 15;
+
+      if (state.stage === 1) {
+        mesh = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffea00 }));
+      } else if (state.stage === 2) {
+        mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), new THREE.MeshStandardMaterial({ color: 0x33cc33 }));
+        projSpeed = 0.28;
+      } else if (state.stage === 3) {
+        if (state.phase === 1) mesh = createNinhoCanModel(0.7);
+        else if (state.phase === 2) mesh = createAcaiCupModel(0.85);
+        else if (state.phase === 3) mesh = createAcaiNinhoCupModel(0.9);
+        else {
+          mesh = createAcaiCupModel(0.5);
+          projSpeed = 0.08;
+          projDamage = 2;
+        }
+      } else if (state.stage === 4) {
+        mesh = createMilkCupWithStrawberriesModel(0.85);
+        projSpeed = 0.26;
+        projDamage = 18;
+      }
+
+      const diffConfig = DIFFICULTIES[selectedDifficulty];
+      projSpeed *= diffConfig.speedMult;
+      projDamage *= diffConfig.dmgMult;
+
+      mesh.position.copy(bossGroup.position);
+      mesh.position.y = 0.8;
+      scene.add(mesh);
+
+      bulletsBoss.push({ mesh, dir, speed: projSpeed, damage: projDamage, radius: 0.5 });
+    }
+
+    function spawnMinion() {
+      if (state.boss.isDying || state.waitingForDoor) return;
+      const minionMesh = createAcaiBowlModel(0.45);
+      minionMesh.position.set(bossGroup.position.x, 0, bossGroup.position.z);
+      scene.add(minionMesh);
+
+      const diffConfig = DIFFICULTIES[selectedDifficulty];
+      minions.push({ mesh: minionMesh, speed: 0.12 * diffConfig.speedMult, radius: 0.8 });
+    }
+
+    // --- LOOP PRINCIPAL ---
+    function animate(timestamp) {
+      requestAnimationFrame(animate);
+
+      if (!state.gameStarted || state.gameOver) {
+        renderer.render(scene, camera);
+        return;
+      }
+
+      // Movimentação do Player
+      if (state.keys['KeyW'] && playerGroup.position.z > -9.5) playerGroup.position.z -= state.player.speed;
+      if (state.keys['KeyS'] && playerGroup.position.z < 9.5) playerGroup.position.z += state.player.speed;
+      if (state.keys['KeyA'] && playerGroup.position.x > -15) playerGroup.position.x -= state.player.speed;
+      if (state.keys['KeyD'] && playerGroup.position.x < 15) playerGroup.position.x += state.player.speed;
+
+      if (state.targetPoint) {
+        playerGroup.lookAt(state.targetPoint.x, playerGroup.position.y, state.targetPoint.z);
+      }
+
+      playerGroup.visible = (Date.now() < state.player.invulnerable) ? (Math.floor(Date.now() / 80) % 2 === 0) : true;
+
+      // Movimentação e Abertura da Porta
+      if (state.waitingForDoor && state.activeDoor) {
+        if (state.activeDoor.currentAngle < state.activeDoor.targetAngle) {
+          state.activeDoor.currentAngle += 0.03;
+          state.activeDoor.doorLGroup.rotation.y = -state.activeDoor.currentAngle;
+          state.activeDoor.doorRGroup.rotation.y = state.activeDoor.currentAngle;
+        }
+
+        const doorPos = state.activeDoor.mesh.position;
+        if (getDistance2D(playerGroup.position, doorPos) < 2.0 && playerGroup.position.z < -8.5) {
+          enterNextStageThroughDoor();
+        }
+      }
+
+      // Movimentação Fluida e Suave dos Bosses
+      if (!state.boss.inTransition && !state.boss.isDying && !state.waitingForDoor && !(state.stage === 3 && state.phase === 4)) {
+        const time = timestamp * 0.0012;
+        const diffConfig = DIFFICULTIES[selectedDifficulty];
+
+        if (state.stage === 4 && state.phase >= 2) {
+          // Fase de Perseguição Corpo a Corpo / Espada
+          const dir = new THREE.Vector3().subVectors(playerGroup.position, bossGroup.position);
+          dir.y = 0; dir.normalize();
+          bossGroup.position.addScaledVector(dir, 0.06 * diffConfig.speedMult);
+          bossGroup.lookAt(playerGroup.position.x, bossGroup.position.y, playerGroup.position.z);
+
+          if (getDistance2D(playerGroup.position, bossGroup.position) < (state.boss.radius + state.player.radius)) {
+            damagePlayer(25 * diffConfig.dmgMult);
+          }
+        } else {
+          // Movimento Curvado Continuo e Suave sem Teleportes
+          bossGroup.position.x = Math.sin(time) * 8;
+          bossGroup.position.z = -2 + Math.cos(time * 1.5) * 3.5;
+          bossGroup.rotation.y = Math.sin(time * 0.5) * 0.5;
+        }
+      }
+
+      // Atualiza Barra de Vida do Chefe
+      const bossHealthBar = document.getElementById('boss-health-bar');
+      bossHealthBar.style.width = `${(state.boss.hp / state.boss.maxHp) * 100}%`;
+
+      // Troca de Estágios e Fases ao Zerar Vida
+      if (state.boss.hp <= 0 && !state.boss.inTransition && !state.boss.isDying && !state.waitingForDoor) {
+        handleBossDeathSequence();
+      } else if (!state.boss.inTransition && !state.boss.isDying) {
+        const hpPct = state.boss.hp / state.boss.maxHp;
+        if (state.stage === 3) {
+          if (state.phase === 1 && hpPct <= 0.66) nextStageOrPhase();
+          else if (state.phase === 2 && hpPct <= 0.33) nextStageOrPhase();
+        } else if (state.stage === 4) {
+          if (state.phase === 1 && hpPct <= 0.75) nextStageOrPhase();
+          else if (state.phase === 2 && hpPct <= 0.50) nextStageOrPhase();
+          else if (state.phase === 3 && hpPct <= 0.25) nextStageOrPhase();
+        }
+      }
+
+      // Disparos e Padrões do Criador do Açaí
+      if (!state.boss.inTransition && !state.boss.isDying && !state.waitingForDoor) {
+        const diffConfig = DIFFICULTIES[selectedDifficulty];
+        const shootInterval = ((state.stage === 3 && state.phase === 4) ? 2000 : 750) / diffConfig.speedMult;
+        
+        if (timestamp - state.lastBossShoot > shootInterval) {
+          bossShoot();
+          state.lastBossShoot = timestamp;
+        }
+
+        if (state.stage === 3 && state.phase !== 4 && timestamp - state.lastMinionSpawn > ((state.phase === 3 ? 2400 : 3500) / diffConfig.speedMult)) {
+          spawnMinion();
+          state.lastMinionSpawn = timestamp;
+        }
+
+        if (state.stage === 3 && state.phase === 3 && timestamp - state.lastAcaiRain > (2200 / diffConfig.speedMult)) {
+          spawnTargetedAcai(false);
+          state.lastAcaiRain = timestamp;
+        }
+
+        // Ataque de Lasers dos Olhos (Criador - Fases 3 e 4)
+        if (state.stage === 4 && (state.phase === 3 || state.phase === 4) && timestamp - state.lastLaserShoot > (1800 / diffConfig.speedMult)) {
+          shootCreatorEyeLasers();
+          state.lastLaserShoot = timestamp;
+        }
+
+        // Bombas Finais Mistas (Criador - Fase 4)
+        if (state.stage === 4 && state.phase === 4 && timestamp - state.lastAcaiRain > (1200 / diffConfig.speedMult)) {
+          spawnTargetedAcai(true);
+          state.lastAcaiRain = timestamp;
+        }
+      }
+
+      // Chuva de Açaí
+      const diffConfig = DIFFICULTIES[selectedDifficulty];
+      for (let i = fallingAcais.length - 1; i >= 0; i--) {
+        const fall = fallingAcais[i];
+        const elapsed = timestamp - fall.startTime;
+        const progress = Math.min(1, elapsed / fall.duration);
+
+        fall.marker.scale.set(progress, progress, 1);
+        fall.mesh.position.y = 18 * (1 - progress);
+
+        if (progress >= 1) {
+          disintegrateMinion(fall.target);
+          if (getDistance2D(playerGroup.position, fall.target) < 2.0) damagePlayer(35 * diffConfig.dmgMult);
+          scene.remove(fall.mesh);
+          scene.remove(fall.marker);
+          fallingAcais.splice(i, 1);
+        }
+      }
+
+      // Raio Especial
+      if (activeBeam) {
+        const elapsed = timestamp - activeBeam.startTime;
+        activeBeam.mesh.position.copy(playerGroup.position);
+        activeBeam.mesh.position.y = 0.8;
+        const target = state.targetPoint.clone();
+        target.y = 0.8;
+        activeBeam.mesh.lookAt(target);
+
+        if (!state.boss.isDying && !state.waitingForDoor) {
+          const toBoss = new THREE.Vector3().subVectors(bossGroup.position, playerGroup.position);
+          toBoss.y = 0;
+          const bossProjLength = toBoss.dot(activeBeam.dir);
+          if (bossProjLength > 0 && bossProjLength < 35) {
+            const projPoint = activeBeam.dir.clone().multiplyScalar(bossProjLength);
+            if (toBoss.distanceTo(projPoint) < (2.0 + state.boss.radius)) {
+              state.boss.hp = Math.max(0, state.boss.hp - 5);
+              addCoins(1);
+            }
+          }
+        }
+
+        for (let j = minions.length - 1; j >= 0; j--) {
+          const m = minions[j];
+          const toMinion = new THREE.Vector3().subVectors(m.mesh.position, playerGroup.position);
+          toMinion.y = 0;
+          const minionProjLength = toMinion.dot(activeBeam.dir);
+          if (minionProjLength > 0 && minionProjLength < 35) {
+            const projPoint = activeBeam.dir.clone().multiplyScalar(minionProjLength);
+            if (toMinion.distanceTo(projPoint) < (1.5 + m.radius)) {
+              disintegrateMinion(m.mesh.position);
+              scene.remove(m.mesh);
+              minions.splice(j, 1);
+              addCoins(5);
+            }
+          }
+        }
+
+        if (elapsed > activeBeam.duration) {
+          scene.remove(activeBeam.mesh);
+          activeBeam = null;
+        }
+      }
+
+      // Projéteis do Jogador
+      for (let i = bulletsPlayer.length - 1; i >= 0; i--) {
+        const b = bulletsPlayer[i];
+        b.mesh.position.addScaledVector(b.dir, b.speed);
+        b.mesh.rotation.y += 0.2;
+
+        let bulletHit = false;
+
+        if (!state.boss.isDying && !state.waitingForDoor && getDistance2D(b.mesh.position, bossGroup.position) < (b.radius + state.boss.radius)) {
+          state.boss.hp = Math.max(0, state.boss.hp - b.damage);
+          bulletHit = true;
+          addCoins(2);
+        }
+
+        if (!bulletHit) {
+          for (let j = minions.length - 1; j >= 0; j--) {
+            const m = minions[j];
+            if (getDistance2D(b.mesh.position, m.mesh.position) < (b.radius + m.radius)) {
+              disintegrateMinion(m.mesh.position);
+              scene.remove(m.mesh);
+              minions.splice(j, 1);
+              bulletHit = true;
+              addCoins(10);
+              break;
+            }
+          }
+        }
+
+        if (bulletHit) {
+          let specBonus = b.isFiery ? 12 : 6;
+          if (state.special < 100) {
+            state.special = Math.min(100, state.special + specBonus);
+            document.getElementById('special-bar').style.width = `${state.special}%`;
+          }
+
+          if (b.isFiery) disintegrateMinion(b.mesh.position);
+
+          scene.remove(b.mesh);
+          bulletsPlayer.splice(i, 1);
+          continue;
+        }
+
+        if (Math.abs(b.mesh.position.x) > 17 || Math.abs(b.mesh.position.z) > 11) {
+          scene.remove(b.mesh);
+          bulletsPlayer.splice(i, 1);
+        }
+      }
+
+      // Projéteis do Boss
+      for (let i = bulletsBoss.length - 1; i >= 0; i--) {
+        const b = bulletsBoss[i];
+        b.mesh.position.addScaledVector(b.dir, b.speed);
+
+        if (getDistance2D(b.mesh.position, playerGroup.position) < (b.radius + state.player.radius)) {
+          damagePlayer(b.damage);
+          scene.remove(b.mesh);
+          bulletsBoss.splice(i, 1);
+          continue;
+        }
+
+        if (Math.abs(b.mesh.position.x) > 17 || Math.abs(b.mesh.position.z) > 11) {
+          scene.remove(b.mesh);
+          bulletsBoss.splice(i, 1);
+        }
+      }
+
+      // Mini Açaís (Minions perseguidores)
+      for (let i = minions.length - 1; i >= 0; i--) {
+        const m = minions[i];
+        const dir = new THREE.Vector3().subVectors(playerGroup.position, m.mesh.position);
+        dir.y = 0; 
+        dir.normalize();
+
+        m.mesh.position.addScaledVector(dir, m.speed);
+        m.mesh.lookAt(playerGroup.position.x, m.mesh.position.y, playerGroup.position.z);
+
+        if (getDistance2D(m.mesh.position, playerGroup.position) <= (m.radius + state.player.radius)) {
+          damagePlayer(20 * diffConfig.dmgMult);
+          disintegrateMinion(m.mesh.position);
+          scene.remove(m.mesh);
+          minions.splice(i, 1);
+        }
+      }
+
+      // Partículas
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.mesh.position.add(p.vel);
+        p.vel.y -= 0.018;
+        p.life -= 0.03;
+        if (p.life <= 0) {
+          scene.remove(p.mesh);
+          particles.splice(i, 1);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
